@@ -1,15 +1,16 @@
 #include <Stepper.h>
 #include <Servo.h>
 
-#define REVERSE_X      1
+#define REVERSE_X      0
 #define REVERSE_Y      0
 #define STEPS_PER_REV  20
 #define MAX_STEPS      250
 #define PEN_UP_ANGLE   40
 #define PEN_DOWN_ANGLE 80
-#define SERVO_DELAY   (PEN_DOWN_ANGLE - PEN_UP_ANGLE) * 10
-
+#define SERVO_DELAY   (PEN_DOWN_ANGLE - PEN_UP_ANGLE) * 4
+#define LETTER_SPACING 2
 #define SERVO_PIN      10
+#define FONT_SIZE      10
 
 Stepper X_MOTOR(STEPS_PER_REV, 6, 7, 8, 9);
 Stepper Y_MOTOR(STEPS_PER_REV, 2, 3, 4, 5);
@@ -41,27 +42,85 @@ struct point triangle[] = {
 
 struct point line[] = {
   {0, 0, 0},
-  {250, 250, 0}
+  {250, 50, 0}
 };
 
 
 struct point location = {0, 0, 0};
+
+char R[7][4] = {
+  {'#', '#', '#', '#'},
+  {'#', '-', '-', '#'},
+  {'#', '-', '-', '#'},
+  {'#', '#', '#', '#'},
+  {'#', '#', '-', '-'},
+  {'#', '-', '#', '-'},
+  {'#', '-', '-', '#'},
+};
+
+char E[7][4] = {
+  {'#', '#', '#', '#'},
+  {'#', '-', '-', '#'},
+  {'#', '-', '-', '-'},
+  {'#', '#', '#', '-'},
+  {'#', '-', '-', '-'},
+  {'#', '-', '-', '#'},
+  {'#', '#', '#', '#'},
+};
+char K[7][4] = {
+  {'#', '-', '-', '#'},
+  {'#', '-', '#', '-'},
+  {'#', '#', '-', '-'},
+  {'#', '-', '-', '-'},
+  {'#', '#', '-', '-'},
+  {'#', '-', '#', '-'},
+  {'#', '-', '-', '#'},
+};
+char O[7][4] = {
+  {'#', '#', '#', '#'},
+  {'#', '-', '-', '#'},
+  {'#', '-', '-', '#'},
+  {'#', '-', '-', '#'},
+  {'#', '-', '-', '#'},
+  {'#', '-', '-', '#'},
+  {'#', '#', '#', '#'},
+};
 
 void setup() {
   Serial.begin(9600);
   X_MOTOR.setSpeed(1000);
   Y_MOTOR.setSpeed(1000);
   servo.attach(SERVO_PIN);
-  drawShape(shape, 4, 2);
-  //drawShape(triangle, 3, 1);
-  //drawShape(rectangle, 4, 1);
-  //drawShape(line, 2, 5);
-  moveTo({0, 0});
-  releaseMotors();
+  penUp();
 }
 
 void loop() {
+  String str;
+  struct point node;
+  if (Serial.available()) {
+    str = Serial.readString();
+    int32_t coords = str.toInt();
+    if (coords == -1) {
+      releaseMotors();
+    } else {
+      node.x = coords >> 16 & 0xFF;
+      node.y = coords >> 8 & 0xFF;
+      node.z = coords >> 0 & 0xFF;
+    }
+    if (coords == 10) {
+      drawLetter(R, FONT_SIZE);
+      drawLetter(E, FONT_SIZE);
+      drawLetter(K, FONT_SIZE);
+      drawLetter(O, FONT_SIZE);
+      moveTo({0, 0, 0});
+      releaseMotors();
+    }
+  }
 
+  if (node.x || node.y) {
+    drawVector(node);
+  }
+  delay(1000);
 }
 
 void drawShape (struct point nodes[], uint8_t len, uint8_t rounds) {
@@ -71,7 +130,8 @@ void drawShape (struct point nodes[], uint8_t len, uint8_t rounds) {
       drawVector(nodes[i % len]);
     }
   }
-  penUp();
+  moveTo({0, 0, 0});
+  releaseMotors();
 }
 
 void drawVector(struct point node) {
@@ -103,6 +163,32 @@ void drawVector(struct point node) {
     }
     xDistance = abs(node.x - location.x);               //Recalculate the distance for next loop
     yDistance = abs(node.y - location.y);
+  }
+}
+
+/*
+  Iterates through a whole column, then increases row and goes again
+*/
+
+void drawLetter(char arr[7][4], uint8_t width) {
+  uint8_t offsetY = location.y + width * LETTER_SPACING;
+  for (uint8_t i = 0; i < 4; i++) {
+    for (uint8_t j = 0; j < 7; j++) {
+      if (arr[j][i] == '#') {
+        verticalFill({width * j, width * i + offsetY}, width);
+      }
+    }
+  }
+}
+
+void verticalFill(struct point start, uint8_t width) {
+  uint8_t i = start.x;
+  if (location.x != start.x || location.y != start.y) {
+    moveTo(start);
+  }
+  while (i <= start.x + width) {
+    drawVector({i, i % 2 == 0 ? start.y : start.y + width, 0});
+    i++;
   }
 }
 
