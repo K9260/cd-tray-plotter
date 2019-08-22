@@ -5,12 +5,14 @@
 #define REVERSE_Y      0
 #define STEPS_PER_REV  20
 #define MAX_STEPS      250
-#define PEN_UP_ANGLE   40
+#define PEN_UP_ANGLE   50
 #define PEN_DOWN_ANGLE 80
 #define SERVO_DELAY   (PEN_DOWN_ANGLE - PEN_UP_ANGLE) * 4
 #define LETTER_SPACING 2
 #define SERVO_PIN      10
-#define FONT_SIZE      10
+#define FONT_SIZE      4
+#define SYMBOL_HEIGHT  7
+#define SYMBOL_WIDTH   4
 
 Stepper X_MOTOR(STEPS_PER_REV, 6, 7, 8, 9);
 Stepper Y_MOTOR(STEPS_PER_REV, 2, 3, 4, 5);
@@ -48,43 +50,44 @@ struct point line[] = {
 
 struct point location = {0, 0, 0};
 
-char R[7][4] = {
-  {'#', '#', '#', '#'},
-  {'#', '-', '-', '#'},
-  {'#', '-', '-', '#'},
-  {'#', '#', '#', '#'},
-  {'#', '#', '-', '-'},
-  {'#', '-', '#', '-'},
-  {'#', '-', '-', '#'},
+char _R[] = {
+  0B1111,
+  0B1001,
+  0B1001,
+  0B1111,
+  0B1100,
+  0B1010,
+  0B1001,
+};
+char _E[] = {
+  0B1111,
+  0B1001,
+  0B1000,
+  0B1110,
+  0B1000,
+  0B1001,
+  0B1111,
+};
+char _K[] = {
+  0B1001,
+  0B1010,
+  0B1100,
+  0B1000,
+  0B1100,
+  0B1010,
+  0B1001,
+};
+char _O[] = {
+  0B1111,
+  0B1001,
+  0B1001,
+  0B1001,
+  0B1001,
+  0B1001,
+  0B1111,
 };
 
-char E[7][4] = {
-  {'#', '#', '#', '#'},
-  {'#', '-', '-', '#'},
-  {'#', '-', '-', '-'},
-  {'#', '#', '#', '-'},
-  {'#', '-', '-', '-'},
-  {'#', '-', '-', '#'},
-  {'#', '#', '#', '#'},
-};
-char K[7][4] = {
-  {'#', '-', '-', '#'},
-  {'#', '-', '#', '-'},
-  {'#', '#', '-', '-'},
-  {'#', '-', '-', '-'},
-  {'#', '#', '-', '-'},
-  {'#', '-', '#', '-'},
-  {'#', '-', '-', '#'},
-};
-char O[7][4] = {
-  {'#', '#', '#', '#'},
-  {'#', '-', '-', '#'},
-  {'#', '-', '-', '#'},
-  {'#', '-', '-', '#'},
-  {'#', '-', '-', '#'},
-  {'#', '-', '-', '#'},
-  {'#', '#', '#', '#'},
-};
+
 
 void setup() {
   Serial.begin(9600);
@@ -108,11 +111,10 @@ void loop() {
       node.z = coords >> 0 & 0xFF;
     }
     if (coords == 10) {
-      drawLetter(R, FONT_SIZE);
-      drawLetter(E, FONT_SIZE);
-      drawLetter(K, FONT_SIZE);
-      drawLetter(O, FONT_SIZE);
-      moveTo({0, 0, 0});
+      drawSymbol(_R, FONT_SIZE);
+      drawSymbol(_E, FONT_SIZE);
+      drawSymbol(_K, FONT_SIZE);
+      drawSymbol(_O, FONT_SIZE);
       releaseMotors();
     }
   }
@@ -170,24 +172,29 @@ void drawVector(struct point node) {
   Iterates through a whole column, then increases row and goes again
 */
 
-void drawLetter(char arr[7][4], uint8_t width) {
-  uint8_t offsetY = location.y + width * LETTER_SPACING;
-  for (uint8_t i = 0; i < 4; i++) {
-    for (uint8_t j = 0; j < 7; j++) {
-      if (arr[j][i] == '#') {
-        verticalFill({width * j, width * i + offsetY}, width);
+void drawSymbol(char arr[SYMBOL_HEIGHT], uint8_t pixelSize) {
+  static uint8_t offsetX = 0; //If space is running out on Y axis, move one row down
+  if (location.y + LETTER_SPACING * pixelSize + SYMBOL_WIDTH * pixelSize >= MAX_STEPS) {
+    moveTo({location.x + pixelSize * LETTER_SPACING, 0, 0});
+    offsetX = location.x;
+  }
+  uint8_t offsetY = location.y + pixelSize * LETTER_SPACING;
+  for (uint8_t i = 0; i < SYMBOL_WIDTH; i++) {
+    for (uint8_t j = 0; j < SYMBOL_HEIGHT; j++) {
+      if (arr[j] >> SYMBOL_WIDTH - 1 - i & 1) {
+        verticalFill({pixelSize * j + offsetX, pixelSize * i + offsetY}, pixelSize);
       }
     }
   }
 }
 
-void verticalFill(struct point start, uint8_t width) {
+void verticalFill(struct point start, uint8_t pixelSize) {
   uint8_t i = start.x;
   if (location.x != start.x || location.y != start.y) {
     moveTo(start);
   }
-  while (i <= start.x + width) {
-    drawVector({i, i % 2 == 0 ? start.y : start.y + width, 0});
+  while (i <= start.x + pixelSize) {
+    drawVector({i, i % 2 == 0 ? start.y : start.y + pixelSize, 0});
     i++;
   }
 }
