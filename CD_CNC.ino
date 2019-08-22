@@ -1,7 +1,7 @@
 #include <Stepper.h>
 #include <Servo.h>
 
-#define REVERSE_X      0
+#define REVERSE_X      1
 #define REVERSE_Y      0
 #define STEPS_PER_REV  20
 #define MAX_STEPS      250
@@ -10,7 +10,7 @@
 #define SERVO_DELAY   (PEN_DOWN_ANGLE - PEN_UP_ANGLE) * 4
 #define LETTER_SPACING 2
 #define SERVO_PIN      10
-#define FONT_SIZE      4
+#define FONT_SIZE      6
 #define SYMBOL_HEIGHT  7
 #define SYMBOL_WIDTH   4
 
@@ -44,9 +44,8 @@ struct point triangle[] = {
 
 struct point line[] = {
   {0, 0, 0},
-  {250, 50, 0}
+  {118, 213, 0}
 };
-
 
 struct point location = {0, 0, 0};
 
@@ -87,8 +86,6 @@ char _O[] = {
   0B1111,
 };
 
-
-
 void setup() {
   Serial.begin(9600);
   X_MOTOR.setSpeed(1000);
@@ -105,16 +102,21 @@ void loop() {
     int32_t coords = str.toInt();
     if (coords == -1) {
       releaseMotors();
-    } else {
+    }/* else {
       node.x = coords >> 16 & 0xFF;
       node.y = coords >> 8 & 0xFF;
       node.z = coords >> 0 & 0xFF;
-    }
+    }*/
     if (coords == 10) {
       drawSymbol(_R, FONT_SIZE);
       drawSymbol(_E, FONT_SIZE);
       drawSymbol(_K, FONT_SIZE);
       drawSymbol(_O, FONT_SIZE);
+      releaseMotors();
+    }
+    if (coords == 11) {
+      drawShape(line, 2);
+      drawShape(shape, 4);
       releaseMotors();
     }
   }
@@ -125,12 +127,10 @@ void loop() {
   delay(1000);
 }
 
-void drawShape (struct point nodes[], uint8_t len, uint8_t rounds) {
-  for (uint8_t j = 0; j < rounds; j++) {  //How many times to draw the same shape (to make the pen markings more visible)
-    moveTo(nodes[0]);                     //Go to first node with pen up
-    for (uint8_t i = 0; i < len + 1; i++) {
-      drawVector(nodes[i % len]);
-    }
+void drawShape (struct point nodes[], uint8_t len) {
+  moveTo(nodes[0]);                     //Go to first node with pen up
+  for (uint8_t i = 0; i < len + 1; i++) {
+    drawVector(nodes[i % len]);
   }
   moveTo({0, 0, 0});
   releaseMotors();
@@ -173,18 +173,29 @@ void drawVector(struct point node) {
 */
 
 void drawSymbol(char arr[SYMBOL_HEIGHT], uint8_t pixelSize) {
-  static uint8_t offsetX = 0; //If space is running out on Y axis, move one row down
-  if (location.y + LETTER_SPACING * pixelSize + SYMBOL_WIDTH * pixelSize >= MAX_STEPS) {
-    moveTo({location.x + pixelSize * LETTER_SPACING, 0, 0});
-    offsetX = location.x;
+  static uint8_t offsetY = 0; //If space is running out on X axis, move one row down
+  if (location.x + LETTER_SPACING * pixelSize + SYMBOL_WIDTH * pixelSize >= MAX_STEPS) {
+    moveTo({0, location.y + pixelSize * LETTER_SPACING, 0});
+    offsetY = location.y;
   }
-  uint8_t offsetY = location.y + pixelSize * LETTER_SPACING;
-  for (uint8_t i = 0; i < SYMBOL_WIDTH; i++) {
-    for (uint8_t j = 0; j < SYMBOL_HEIGHT; j++) {
-      if (arr[j] >> SYMBOL_WIDTH - 1 - i & 1) {
-        verticalFill({pixelSize * j + offsetX, pixelSize * i + offsetY}, pixelSize);
+  uint8_t offsetX = location.x + pixelSize * LETTER_SPACING;
+  for (uint8_t x = 0; x < SYMBOL_WIDTH; x++) {
+    for (uint8_t y = 0; y < SYMBOL_HEIGHT; y++) {
+      if (arr[y] >> SYMBOL_WIDTH - 1 - x & 1) {
+        horizontalFill({pixelSize * x + offsetX, pixelSize * y + offsetY}, pixelSize);
       }
     }
+  }
+}
+
+void horizontalFill(struct point start, uint8_t pixelSize) {
+  uint8_t i = start.y;
+  if (location.x != start.x || location.y != start.y) {
+    moveTo(start);
+  }
+  while (i <= start.y + pixelSize) {
+    drawVector({ i % 2 == 0 ? start.x : start.x + pixelSize, i, 0});
+    i++;
   }
 }
 
@@ -194,7 +205,7 @@ void verticalFill(struct point start, uint8_t pixelSize) {
     moveTo(start);
   }
   while (i <= start.x + pixelSize) {
-    drawVector({i, i % 2 == 0 ? start.y : start.y + pixelSize, 0});
+    drawVector({ i, i % 2 == 0 ? start.y : start.y + pixelSize, 0});
     i++;
   }
 }
@@ -249,8 +260,16 @@ void moveZ(uint8_t z) {
 
 void moveTo(struct point node) {
   penUp();
+#if REVERSE_X
+  X_MOTOR.step(location.x - node.x);
+#else
   X_MOTOR.step(node.x - location.x);
+#endif
+#if REVERSE_Y
+  Y_MOTOR.step(location.y - node.y);
+#else
   Y_MOTOR.step(node.y - location.y);
+#endif
   location.x = node.x;
   location.y = node.y;
 }
