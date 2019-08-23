@@ -10,9 +10,9 @@
 #define SERVO_DELAY   (PEN_DOWN_ANGLE - PEN_UP_ANGLE) * 4
 #define LETTER_SPACING 2
 #define SERVO_PIN      10
-#define FONT_SIZE      6
+#define PIXEL_SIZE     6
 #define SYMBOL_HEIGHT  7
-#define SYMBOL_WIDTH   4
+#define SYMBOL_WIDTH   8
 
 Stepper X_MOTOR(STEPS_PER_REV, 6, 7, 8, 9);
 Stepper Y_MOTOR(STEPS_PER_REV, 2, 3, 4, 5);
@@ -20,6 +20,26 @@ Servo servo;
 
 struct point {
   uint8_t x, y, z;
+  /*
+      Directly initialize axis rather than assign new value after initialization.
+      Constructor member initialization on Google.
+  */
+  point() : x(0), y(0), z(0) {}
+  point(uint8_t _x, uint8_t _y) : x(_x), y(_y), z(0) {}
+  point(uint8_t _x, uint8_t _y, uint8_t _z) : x(_x), y(_y), z(_z) {}
+
+  point operator + (const point& p) {
+    return point(this->x + p.x, this->y + p.y);
+  }
+  point operator - (const point& p) {
+    return point(this->x - p.x, this->y - p.y);
+  }
+  bool operator == (const point& p) {
+    return (this->x == p.x && this->y == p.y && this->z == p.z);
+  }
+  bool operator != (const point& p) {
+    return (this->x != p.x || this->y != p.y || this->z != p.z);
+  }
 };
 
 struct point rectangle[] = {
@@ -50,40 +70,40 @@ struct point line[] = {
 struct point location = {0, 0, 0};
 
 char _R[] = {
-  0B1111,
-  0B1001,
-  0B1001,
-  0B1111,
-  0B1100,
-  0B1010,
-  0B1001,
+  0B11110000,
+  0B10010000,
+  0B10010000,
+  0B11110000,
+  0B11000000,
+  0B10100000,
+  0B10010000,
 };
 char _E[] = {
-  0B1111,
-  0B1001,
-  0B1000,
-  0B1110,
-  0B1000,
-  0B1001,
-  0B1111,
+  0B11110000,
+  0B10010000,
+  0B10000000,
+  0B11100000,
+  0B10000000,
+  0B10010000,
+  0B11110000,
 };
 char _K[] = {
-  0B1001,
-  0B1010,
-  0B1100,
-  0B1000,
-  0B1100,
-  0B1010,
-  0B1001,
+  0B10010000,
+  0B10100000,
+  0B11000000,
+  0B10000000,
+  0B11000000,
+  0B10100000,
+  0B10010000,
 };
 char _O[] = {
-  0B1111,
-  0B1001,
-  0B1001,
-  0B1001,
-  0B1001,
-  0B1001,
-  0B1111,
+  0B11110000,
+  0B10010000,
+  0B10010000,
+  0B10010000,
+  0B10010000,
+  0B10010000,
+  0B11110000,
 };
 
 void setup() {
@@ -108,14 +128,15 @@ void loop() {
       node.z = coords >> 0 & 0xFF;
     }*/
     if (coords == 10) {
-      drawSymbol(_R, FONT_SIZE);
-      drawSymbol(_E, FONT_SIZE);
-      drawSymbol(_K, FONT_SIZE);
-      drawSymbol(_O, FONT_SIZE);
+      drawSymbol(_R, PIXEL_SIZE, 'h');
+      drawSymbol(_E, PIXEL_SIZE, 'h');
+      drawSymbol(_K, PIXEL_SIZE, 'h');
+      drawSymbol(_O, PIXEL_SIZE, 'h');
       releaseMotors();
     }
     if (coords == 11) {
-      drawShape(line, 2);
+      //drawCircle({MAX_STEPS/2, MAX_STEPS/2}, 50);
+      drawShape(rectangle, 4);
       drawShape(shape, 4);
       releaseMotors();
     }
@@ -128,11 +149,11 @@ void loop() {
 }
 
 void drawShape (struct point nodes[], uint8_t len) {
-  moveTo(nodes[0]);                     //Go to first node with pen up
+  moveTo(nodes[0]);
   for (uint8_t i = 0; i < len + 1; i++) {
     drawVector(nodes[i % len]);
   }
-  moveTo({0, 0, 0});
+  moveTo({0, 0});
   releaseMotors();
 }
 
@@ -142,7 +163,7 @@ void drawVector(struct point node) {
   char longerAxis = xDistance > yDistance ? 'x' : 'y';   //Which axis has longer distance to travel
   float scale = (longerAxis == 'x') ? (float)(xDistance) / (float)(yDistance) : (float)(yDistance) / (float)(xDistance);
 
-  while (location.x != node.x || location.y != node.y) { //Loop until motors reach target node
+  while (location != node) { //Loop until motors reach target node
     moveZ(node.z);                                       //Move the pen up/down
     if (scale < MAX_STEPS) {                             //If scale is equal to max steps, there is no need to limit other axis's
       switch (longerAxis) {
@@ -172,17 +193,28 @@ void drawVector(struct point node) {
   Iterates through a whole column, then increases row and goes again
 */
 
-void drawSymbol(char arr[SYMBOL_HEIGHT], uint8_t pixelSize) {
+void drawSymbol(char arr[SYMBOL_HEIGHT], uint8_t pixelSize, char fillType) {
   static uint8_t offsetY = 0; //If space is running out on X axis, move one row down
   if (location.x + LETTER_SPACING * pixelSize + SYMBOL_WIDTH * pixelSize >= MAX_STEPS) {
-    moveTo({0, location.y + pixelSize * LETTER_SPACING, 0});
+    moveTo({0, location.y + pixelSize * LETTER_SPACING});
     offsetY = location.y;
   }
   uint8_t offsetX = location.x + pixelSize * LETTER_SPACING;
+  struct point pixel;
   for (uint8_t x = 0; x < SYMBOL_WIDTH; x++) {
     for (uint8_t y = 0; y < SYMBOL_HEIGHT; y++) {
       if (arr[y] >> SYMBOL_WIDTH - 1 - x & 1) {
-        horizontalFill({pixelSize * x + offsetX, pixelSize * y + offsetY}, pixelSize);
+        pixel = {pixelSize * x + offsetX, pixelSize * y + offsetY};
+        switch (fillType) {
+          case 'v':
+            verticalFill(pixel, pixelSize);
+            break;
+          case 'h':
+            horizontalFill(pixel, pixelSize);
+            break;
+          default:
+            horizontalFill(pixel, pixelSize);
+        }
       }
     }
   }
@@ -190,7 +222,7 @@ void drawSymbol(char arr[SYMBOL_HEIGHT], uint8_t pixelSize) {
 
 void horizontalFill(struct point start, uint8_t pixelSize) {
   uint8_t i = start.y;
-  if (location.x != start.x || location.y != start.y) {
+  if (location != start) {
     moveTo(start);
   }
   while (i <= start.y + pixelSize) {
@@ -201,12 +233,25 @@ void horizontalFill(struct point start, uint8_t pixelSize) {
 
 void verticalFill(struct point start, uint8_t pixelSize) {
   uint8_t i = start.x;
-  if (location.x != start.x || location.y != start.y) {
+  if (location != start) {
     moveTo(start);
   }
   while (i <= start.x + pixelSize) {
     drawVector({ i, i % 2 == 0 ? start.y : start.y + pixelSize, 0});
     i++;
+  }
+}
+
+void drawCircle(struct point center, uint8_t radius) {
+  for (uint16_t i = 0; i < 360; i++) {
+    uint8_t x = center.x + sin((float)(i) * PI / 180) * radius;
+    uint8_t y = center.y + cos((float)(i + 90) * PI / 180) * radius;
+    if (!i) {
+      moveTo({x, y});
+      penDown();
+    }
+    moveX(x);
+    moveY(y);
   }
 }
 
@@ -294,4 +339,3 @@ void releaseMotors() {
     digitalWrite(i, LOW);
   }
 }
-
