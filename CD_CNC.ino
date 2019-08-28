@@ -3,17 +3,25 @@
 
 #define REVERSE_X      1
 #define REVERSE_Y      0
+
 #define STEPS_PER_REV  20
 #define MAX_STEPS      250
 #define PEN_UP_ANGLE   50
 #define PEN_DOWN_ANGLE 80
 #define SERVO_DELAY   (PEN_DOWN_ANGLE - PEN_UP_ANGLE) * 4
-#define LETTER_SPACING 2
+
 #define SERVO_PIN      10
-#define PIXEL_SIZE     6
+
+#define LETTER_SPACING 2
+#define PIXEL_SIZE     8
 #define SYMBOL_HEIGHT  7
 #define SYMBOL_WIDTH   8
+/* Fill types */
+#define VERTICAL       0
+#define HORIZONTAL     1
+#define BOTH           2
 
+#define MAX_SYMBOLS    28
 Stepper X_MOTOR(STEPS_PER_REV, 6, 7, 8, 9);
 Stepper Y_MOTOR(STEPS_PER_REV, 2, 3, 4, 5);
 Servo servo;
@@ -40,6 +48,33 @@ struct point {
   bool operator != (const point& p) {
     return (this->x != p.x || this->y != p.y || this->z != p.z);
   }
+};
+
+class symbolMap {
+    struct symbol {
+      char key;
+      char *arr;
+    } symbols[MAX_SYMBOLS];
+
+    uint8_t symbolsAdded = 0;
+
+  public:
+    bool addSymbol(const struct symbol newSymbol) {
+      if (this->symbolsAdded <= MAX_SYMBOLS) {
+        symbols[this->symbolsAdded++] = newSymbol;
+        return true;
+      }
+      return false;
+    }
+
+    char *getSymbol(char key) {
+      for (uint8_t i = 0; i < this->symbolsAdded; i++) {
+        if (this->symbols[i].key == key) {
+          return this->symbols[i].arr;
+        }
+      }
+      return NULL;
+    }
 };
 
 struct point rectangle[] = {
@@ -106,7 +141,13 @@ char _O[] = {
   0B11110000,
 };
 
+symbolMap symbols;
+
 void setup() {
+  symbols.addSymbol({'R', _R});
+  symbols.addSymbol({'E', _E});
+  symbols.addSymbol({'K', _K});
+  symbols.addSymbol({'O', _O});
   Serial.begin(9600);
   X_MOTOR.setSpeed(1000);
   Y_MOTOR.setSpeed(1000);
@@ -115,37 +156,27 @@ void setup() {
 }
 
 void loop() {
-  String str;
-  struct point node;
   if (Serial.available()) {
-    str = Serial.readString();
+    struct point node;
+    String str = Serial.readString();
     int32_t coords = str.toInt();
-    if (coords == -1) {
+
+    if (str[0] == '#') {
+      drawSymbol(symbols.getSymbol(str[1]), PIXEL_SIZE, HORIZONTAL);
       releaseMotors();
-    }/* else {
+    }
+    else if (coords == -1) {
+      releaseMotors();
+    } else {
       node.x = coords >> 16 & 0xFF;
       node.y = coords >> 8 & 0xFF;
       node.z = coords >> 0 & 0xFF;
-    }*/
-    if (coords == 10) {
-      drawSymbol(_R, PIXEL_SIZE, 'h');
-      drawSymbol(_E, PIXEL_SIZE, 'h');
-      drawSymbol(_K, PIXEL_SIZE, 'h');
-      drawSymbol(_O, PIXEL_SIZE, 'h');
-      releaseMotors();
     }
-    if (coords == 11) {
-      //drawCircle({MAX_STEPS/2, MAX_STEPS/2}, 50);
-      drawShape(rectangle, 4);
-      drawShape(shape, 4);
-      releaseMotors();
+    if (node.x < MAX_STEPS && node.y < MAX_STEPS) {
+      drawVector(node);
     }
+    delay(1000);
   }
-
-  if (node.x || node.y) {
-    drawVector(node);
-  }
-  delay(1000);
 }
 
 void drawShape (struct point nodes[], uint8_t len) {
@@ -193,8 +224,9 @@ void drawVector(struct point node) {
   Iterates through a whole column, then increases row and goes again
 */
 
-void drawSymbol(char arr[SYMBOL_HEIGHT], uint8_t pixelSize, char fillType) {
+void drawSymbol(char arr[SYMBOL_HEIGHT], uint8_t pixelSize, uint8_t fillType) {
   static uint8_t offsetY = 0; //If space is running out on X axis, move one row down
+  if (arr == NULL) return;
   if (location.x + LETTER_SPACING * pixelSize + SYMBOL_WIDTH * pixelSize >= MAX_STEPS) {
     moveTo({0, location.y + pixelSize * LETTER_SPACING});
     offsetY = location.y;
@@ -206,11 +238,15 @@ void drawSymbol(char arr[SYMBOL_HEIGHT], uint8_t pixelSize, char fillType) {
       if (arr[y] >> SYMBOL_WIDTH - 1 - x & 1) {
         pixel = {pixelSize * x + offsetX, pixelSize * y + offsetY};
         switch (fillType) {
-          case 'v':
+          case VERTICAL:
             verticalFill(pixel, pixelSize);
             break;
-          case 'h':
+          case HORIZONTAL:
             horizontalFill(pixel, pixelSize);
+            break;
+          case BOTH:
+            horizontalFill(pixel, pixelSize);
+            verticalFill(pixel, pixelSize);
             break;
           default:
             horizontalFill(pixel, pixelSize);
