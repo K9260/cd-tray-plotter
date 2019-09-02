@@ -5,7 +5,7 @@ This machine is built from 2 old PC CD trays. It can draw vectors and custom sym
 Arduino Uno is used to control the device.
 Motors are driven with 2 H-bridges.
 
-These trays use a stepper motor to move the laser that reads and writes the CD.
+Originally these trays use a stepper motor to move the laser that reads and writes the CD.
 Stepper motors can be driven a certain amount of degrees per pulse. These motors move 16 degrees per pulse.
 That makes it easy to keep track of the coordinates where the pen is drawing.
 
