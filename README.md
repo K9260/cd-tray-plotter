@@ -11,5 +11,12 @@ That makes it easy to keep track of the coordinates where the pen is drawing.
 
 Maximum movement on both axis is around 40mm.
 
+Complete part list:
+* Arduino Uno
+* 2x CD trays
+* 2x H-bridge
+* 5V 3A power supply (2 amps would work also)
+* Plywood frame
+
 ![](https://raw.githubusercontent.com/K9260/cd-tray-plotter/master/images/IMG_20190822_183742.jpg)
 ![](https://raw.githubusercontent.com/K9260/cd-tray-plotter/master/images/IMG_20190822_183753.jpg)
