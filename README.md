@@ -16,6 +16,7 @@ Complete part list:
 * 2x CD trays
 * 2x H-bridge
 * 5V 3A power supply (2 amps would work also)
+* Servo to move the pen up and down
 * Plywood frame
 
 ![](https://raw.githubusercontent.com/K9260/cd-tray-plotter/master/images/IMG_20190822_183742.jpg)
