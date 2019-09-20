@@ -17,7 +17,8 @@ Complete part list:
 * 2x H-bridge
 * 5V 3A power supply (2 amps would work also)
 * Servo to move the pen up and down
-* Plywood frame
+* Plywood frame  
 
+[![plotter](http://img.youtube.com/vi/kKaVy1PQwqk/0.jpg)](http://www.youtube.com/watch?v=kKaVy1PQwqk "Plotter")
 ![](https://raw.githubusercontent.com/K9260/cd-tray-plotter/master/images/IMG_20190822_183742.jpg)
 ![](https://raw.githubusercontent.com/K9260/cd-tray-plotter/master/images/IMG_20190822_183753.jpg)
