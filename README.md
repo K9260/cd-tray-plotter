@@ -19,6 +19,8 @@ Complete part list:
 * Servo to move the pen up and down
 * Plywood frame  
 
+### Click the image for video
 [![plotter](http://img.youtube.com/vi/kKaVy1PQwqk/0.jpg)](http://www.youtube.com/watch?v=kKaVy1PQwqk "Plotter")
+
 ![](https://raw.githubusercontent.com/K9260/cd-tray-plotter/master/images/IMG_20190822_183742.jpg)
 ![](https://raw.githubusercontent.com/K9260/cd-tray-plotter/master/images/IMG_20190822_183753.jpg)
