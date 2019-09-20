@@ -1,5 +1,6 @@
 #include <Stepper.h>
 #include <Servo.h>
+#include <SymbolMap.h>
 
 #define REVERSE_X      1
 #define REVERSE_Y      0
@@ -13,7 +14,7 @@
 #define SERVO_PIN      10
 
 #define LETTER_SPACING 2
-#define PIXEL_SIZE     8
+#define PIXEL_SIZE     6
 #define SYMBOL_HEIGHT  7
 #define SYMBOL_WIDTH   8
 /* Fill types */
@@ -22,9 +23,11 @@
 #define BOTH           2
 
 #define MAX_SYMBOLS    28
+
 Stepper X_MOTOR(STEPS_PER_REV, 6, 7, 8, 9);
 Stepper Y_MOTOR(STEPS_PER_REV, 2, 3, 4, 5);
 Servo servo;
+SymbolMap symbols;
 
 struct point {
   uint8_t x, y, z;
@@ -48,33 +51,6 @@ struct point {
   bool operator != (const point& p) {
     return (this->x != p.x || this->y != p.y || this->z != p.z);
   }
-};
-
-class symbolMap {
-    struct symbol {
-      char key;
-      char *arr;
-    } symbols[MAX_SYMBOLS];
-
-    uint8_t symbolsAdded = 0;
-
-  public:
-    bool addSymbol(const struct symbol newSymbol) {
-      if (this->symbolsAdded <= MAX_SYMBOLS) {
-        symbols[this->symbolsAdded++] = newSymbol;
-        return true;
-      }
-      return false;
-    }
-
-    char *getSymbol(char key) {
-      for (uint8_t i = 0; i < this->symbolsAdded; i++) {
-        if (this->symbols[i].key == key) {
-          return this->symbols[i].arr;
-        }
-      }
-      return NULL;
-    }
 };
 
 struct point rectangle[] = {
@@ -104,50 +80,7 @@ struct point line[] = {
 
 struct point location = {0, 0, 0};
 
-char _R[] = {
-  0B11110000,
-  0B10010000,
-  0B10010000,
-  0B11110000,
-  0B11000000,
-  0B10100000,
-  0B10010000,
-};
-char _E[] = {
-  0B11110000,
-  0B10010000,
-  0B10000000,
-  0B11100000,
-  0B10000000,
-  0B10010000,
-  0B11110000,
-};
-char _K[] = {
-  0B10010000,
-  0B10100000,
-  0B11000000,
-  0B10000000,
-  0B11000000,
-  0B10100000,
-  0B10010000,
-};
-char _O[] = {
-  0B11110000,
-  0B10010000,
-  0B10010000,
-  0B10010000,
-  0B10010000,
-  0B10010000,
-  0B11110000,
-};
-
-symbolMap symbols;
-
 void setup() {
-  symbols.addSymbol({'R', _R});
-  symbols.addSymbol({'E', _E});
-  symbols.addSymbol({'K', _K});
-  symbols.addSymbol({'O', _O});
   Serial.begin(9600);
   X_MOTOR.setSpeed(1000);
   Y_MOTOR.setSpeed(1000);
@@ -162,20 +95,24 @@ void loop() {
     int32_t coords = str.toInt();
 
     if (str[0] == '#') {
-      drawSymbol(symbols.getSymbol(str[1]), PIXEL_SIZE, HORIZONTAL);
+      uint8_t i = 1;
+      while (str[i]) {
+        drawSymbol(symbols.getSymbol(str[i]), PIXEL_SIZE, HORIZONTAL);
+        i++;
+      }
       releaseMotors();
     }
     else if (coords == -1) {
       releaseMotors();
     } else {
-      node.x = coords >> 16 & 0xFF;
-      node.y = coords >> 8 & 0xFF;
-      node.z = coords >> 0 & 0xFF;
+      /* node.x = coords >> 16 & 0xFF;
+        node.y = coords >> 8 & 0xFF;
+        node.z = coords >> 0 & 0xFF;*/
     }
     if (node.x < MAX_STEPS && node.y < MAX_STEPS) {
-      drawVector(node);
+      //  drawVector(node);
     }
-    delay(1000);
+    delay(100);
   }
 }
 
