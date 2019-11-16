@@ -86,34 +86,49 @@ void setup() {
   Y_MOTOR.setSpeed(1000);
   servo.attach(SERVO_PIN);
   penUp();
+  releaseMotors();
 }
 
 void loop() {
   if (Serial.available()) {
     struct point node;
     String str = Serial.readString();
-    int32_t coords = str.toInt();
+    uint32_t coords = strtoul((const char *) &str[1], NULL, 16);
+    uint8_t i = 1;
+    uint8_t radius;
+    
+    switch (str[0]) {
+      case '#': // Letter
+        while (str[i]) {
+          drawSymbol(symbols.getSymbol(str[i]), PIXEL_SIZE, HORIZONTAL);
+          i++;
+        }
+        releaseMotors();
+        break;
 
-    if (str[0] == '#') {
-      uint8_t i = 1;
-      while (str[i]) {
-        drawSymbol(symbols.getSymbol(str[i]), PIXEL_SIZE, HORIZONTAL);
-        i++;
-      }
-      releaseMotors();
-    }
-    else if (coords == -1) {
-      releaseMotors();
-    } else {
-      /* node.x = coords >> 16 & 0xFF;
+      case 'v': // Vector
+        node.x = coords >> 16 & 0xFF;
         node.y = coords >> 8 & 0xFF;
-        node.z = coords >> 0 & 0xFF;*/
+        node.z = coords >> 0 & 0xFF;
+
+        if (node.x < MAX_STEPS && node.y < MAX_STEPS) {
+          drawVector(node);
+          releaseMotors();
+        }
+        break;
+
+      case 'c': // Circle
+        node.x = coords >> 16 & 0xFF;
+        node.y = coords >> 8 & 0xFF;
+
+        radius = coords >> 0 & 0xFF;
+
+        drawCircle({node.x, node.y, 0}, radius);
+        break;
     }
-    if (node.x < MAX_STEPS && node.y < MAX_STEPS) {
-      //  drawVector(node);
-    }
-    delay(100);
   }
+  Serial.println("!");
+  delay(10);
 }
 
 void drawShape (struct point nodes[], uint8_t len) {
@@ -216,15 +231,14 @@ void verticalFill(struct point start, uint8_t pixelSize) {
 }
 
 void drawCircle(struct point center, uint8_t radius) {
-  for (uint16_t i = 0; i < 360; i++) {
+  for (uint16_t i = 0; i <= 360 + 10; i++) {
     uint8_t x = center.x + sin((float)(i) * PI / 180) * radius;
-    uint8_t y = center.y + cos((float)(i + 90) * PI / 180) * radius;
+    uint8_t y = center.y + cos((float)(i) * PI / 180) * radius;
     if (!i) {
       moveTo({x, y});
       penDown();
     }
-    moveX(x);
-    moveY(y);
+    drawVector({x, y, 0});
   }
 }
 
