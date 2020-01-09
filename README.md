@@ -1,5 +1,4 @@
 # cd-tray-plotter
-
 This machine is built from 2 old PC CD trays. It can draw vectors and custom symbols.
 
 Arduino Uno is used to control the device.
@@ -19,6 +18,7 @@ Complete part list:
 * Servo to move the pen up and down
 * Plywood frame  
 
+### [Software for drawing vectors and circles for this](https://github.com/rekomerio/cd-tray-plotter-illustrator)
 ### Click the image for video
 [![plotter](http://img.youtube.com/vi/kKaVy1PQwqk/0.jpg)](http://www.youtube.com/watch?v=kKaVy1PQwqk "Plotter")
 
